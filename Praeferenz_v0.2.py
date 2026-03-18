@@ -42,7 +42,7 @@ translations = {
         "show_result": "Zeig das Ergebnis",
         "select_visualization": "Welche Darstellungsoptionen der Ergebnisse sollen angezeigt werden?",
         "scale": "Waage",
-        "multiple_bar_plots": "Mehrere Balkendiagramme",
+        "multiple_bar_plots": "Horizontale Balkendiagramme",
         "text_answer": "Textantwort",
         "show_result": "Zeig das Ergebnis",
         "public_opinion": "Meinung des Volkes",
@@ -75,7 +75,7 @@ translations = {
         "show_result": "Show results",
         "select_visualization": "Which visualization options for the results should be displayed?",
         "scale": "Scale",
-        "multiple_bar_plots": "Multiple Bar Plots",
+        "multiple_bar_plots": "Horizontal Bar Charts",
         "text_answer": "Text Answer",
         "show_result": "Show results",
         "public_opinion": "Public vote",
@@ -502,15 +502,17 @@ def plot_coord(df, question, answers, maxi):
 def plot_waage(df, question, answers):
     # Separate negatives and positives
     df_neg = df[df['Answer'] < 0].copy()
-    df_pos = df[df['Answer'] >= 0].copy()
+    df_neg = df_neg.sort_values('Answer')  # sort negatives by value
+    df_pos = df[df['Answer'] > 0].copy()
+    df_pos = df_pos.sort_values('Answer', ascending=False)  # sort positives by value
     
     # Total weights
     left_weight = df_neg['Answer'].abs().sum()
     right_weight = df_pos['Answer'].abs().sum()
     
     # Beam settings
-    width = 6
-    height = 1
+    width = 4
+    height = 1.15
     max_tilt = np.pi / 8  # max ~22.5 degrees
     total = left_weight + right_weight
     # Invert tilt so heavier side goes down
@@ -535,13 +537,20 @@ def plot_waage(df, question, answers):
     # Draw beam
     ax.plot([x0r, x1r], [y0r, y1r], color='saddlebrown', lw=6, zorder=2)
     # Support
-    ax.plot([0,0], [0,height], color='black', lw=3, zorder=1)
+    ax.plot([0,0], [0,height], color='black', lw=5, zorder=1)
+    # Make a proper stand which looks like wide at the bottom and narrow at the top
+    ax.add_patch(patches.Polygon([(-0.5,0), (0.5,0), (0.2,0.5), (-0.2,0.5)], color='black', zorder=1))
+    ax.add_patch(patches.Circle((0,height), 0.06, color='black', zorder=3))
     
     # Draw pans
     pan_size = 0.5
     ax.add_patch(patches.Rectangle((x0r-pan_size, y0r), 2*pan_size, 0.1*pan_size, color='black', zorder=3))
     ax.add_patch(patches.Rectangle((x1r-pan_size, y1r), 2*pan_size, 0.1*pan_size, color='black', zorder=3))
+    ax.add_patch(patches.Wedge((x0r, y0r), 0.2*pan_size, 180,0, color='black', zorder=2))
+    ax.add_patch(patches.Wedge((x1r, y1r), 0.2*pan_size, 180,0, color='black', zorder=2))
     
+    ax.text(x0r, 0.1, answers[0], ha='center', va='top', fontsize=16)
+    ax.text(x1r, 0.1, answers[1], ha='center', va='top', fontsize=16)
     # Colors for each participant
     names = df['Name'].tolist()
     cmap = plt.get_cmap('tab10')
@@ -552,11 +561,12 @@ def plot_waage(df, question, answers):
     # Function to plot a square above a pan, rotated with the beam
     def plot_square(x_beam, y_beam, value, name, idx):
         # offset vertically above pan
-        offset = 0.14 + idx*0.15
+        offset = 0.15 + idx*0.2
         x0s, y0s = rotate(x_beam, y_beam + offset)
-        size = 500 * abs(value) / max_abs
+        x0s = x_beam
+        size = 1000 * abs(value) / max_abs
         ax.scatter(x0s, y0s, s=size, color=colors[name], marker='s', zorder=3)
-    
+        ax.text(x0s, y0s, name, ha='center', va='bottom', fontsize=10, rotation=0, zorder=4)
     # Plot negative squares on left
     for i, row in enumerate(df_neg.itertuples()):
         plot_square(x0, y0, row.Answer, row.Name, i)
@@ -568,20 +578,22 @@ def plot_waage(df, question, answers):
     # Legend
     handles = [mlines.Line2D([0],[0], marker='s', color='w', markerfacecolor=color, markersize=10) 
                for color in colors.values()]
-    ax.legend(handles, names, title=t("participants"), bbox_to_anchor=(1.05,0.5), loc='center left')
+    # ax.legend(handles, names, title='Teilnehmer', bbox_to_anchor=(1.05,0.5), loc='center left')
     
     # Axis
-    ax.set_xlim(-width/2-1, width/2+1)
-    ax.set_ylim(0, height+2)
+    ax.set_xlim(-width/2-0.5, width/2+0.5)
+    ax.set_ylim(0, height+1.2)
     ax.axis('off')
     ax.set_title(question, fontsize=14, fontweight='bold', pad=15, loc='left')
     st.pyplot(fig)
     # plt.show()
 
 def plot_many_bars(df, question, answers):
-
-    category_names = df.Name.tolist()
-
+    participants = df.Name.tolist()
+    if len(answers) == 2:
+        df[answers[0]] = df['Answer'].where(df['Answer'] > 0, 0)
+        df[answers[1]] = df['Answer'].where(df['Answer'] < 0, 0).abs()
+        df = df.drop(columns=['Answer'])
     results = {}
     for i in range(df.shape[1]-1):
         results[df.columns[i+1]] = df.iloc[:, i+1].to_list()
@@ -605,34 +617,33 @@ def plot_many_bars(df, question, answers):
     ax.spines['bottom'].set_visible(False)
     
 
-    for i, (colname, color) in enumerate(zip(category_names, category_colors)):
-        # print(i)
-        # print(colname, color)
+    for i, (partic, color) in enumerate(zip(participants, category_colors)):
         widths = data[:, i]
         starts = data_cum[:, i] - widths
         rects = ax.barh(labels, widths, left=starts, height=0.5,
-                        label=colname, color=color)
+                        label=partic, color=color)
 
         r, g, b, _ = color
         text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
-        ax.bar_label(rects, labels=np.repeat(colname, len(rects)), label_type='center', color=text_color)
-        # break
-    # ax.legend(ncols=len(category_names), bbox_to_anchor=(0, 1),
-    #           loc='lower left', fontsize='small')
-    
-    # Calculate total for each category
-    totals = df.iloc[:, 1:df.shape[1]].sum(axis=0)
-    # totals
-    winner = totals.idxmax()
-    winner_idx_num = df.columns.get_loc(winner) - 1  # adjust for Name column
+        # print(partic, len(rects))
+        labels_for_rects = [
+            partic if w != 0 else ""
+            for w in widths
+        ]
+        ax.bar_label(rects, labels=labels_for_rects, label_type='center', color=text_color)
 
-    ax.text(totals[winner]/2, winner_idx_num-0.4, "Option " + winner + t('winner_option'), va='center', ha='left', fontsize=12, color='Red')
-    # print(f'Gewinner: {winner} mit einem Gesamtwert von {totals[winner]}')
-    # Draw a red box around the winner
-    ax.add_patch(patches.Rectangle((0, winner_idx_num-0.3), totals[winner], 0.6, fill=False, edgecolor='red', linewidth=2))
+    # # Calculate total for each category
+    # totals = df.iloc[:, 1:df.shape[1]].sum(axis=0)
+    # # totals
+    # winner = totals.idxmax()
+    # winner_idx_num = df.columns.get_loc(winner) - 1  # adjust for Name column
+
+    # ax.text(totals[winner]/2, winner_idx_num-0.4, "Option " + winner + 'winner_option', va='center', ha='left', fontsize=12, color='Red')
+    # # Draw a red box around the winner
+    # ax.add_patch(patches.Rectangle((0, winner_idx_num-0.3), totals[winner], 0.6, fill=False, edgecolor='red', linewidth=2))
     st.pyplot(fig)
     # plt.show()
-    # return fig, ax
+
 
 def text_answer(df, n_answers, answers):
     if n_answers == 2:
