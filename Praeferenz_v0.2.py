@@ -34,8 +34,7 @@ translations = {
         "min_value_error": "Minimaler Wert muss kleiner als maximaler Wert sein. Bitte erneut eingeben.",
         "enter_name": "Gib deinen Namen ein:",
         "enter_preference": "Gib deine Zustimmung zu den Antwortmöglichkeiten ein",
-        "enter_preference_many": "Gib deine Zustimmung zur Antwortmöglichkeit ",
-        "enter_preference_many_2": " ein:",
+        "enter_preference_many": "Gib deine Zustimmung zur Antwortmöglichkeit {answer} ein:",
         "confirm_input": "Eingabe bestätigen",
         "end_vote": "Abstimmung beenden",
         "already_voted": "##### Abgestimmt von:",
@@ -45,15 +44,27 @@ translations = {
         "multiple_bar_plots": "Horizontale Balkendiagramme",
         "text_answer": "Textantwort",
         "show_result": "Zeig das Ergebnis",
+        "show_guide_lines": "Zeige Hilfslinien",
+        "show_guide_lines_average_point": "Zeige Hilfslinien für Durchschnittspunkt",
         "public_opinion": "Meinung des Volkes",
         "participants": "Teilnehmer",
-        "winner_option": " hat gewonnen!",
+        "winner_option": "Herzlichen Glückwunsch! Ihr seid zu einem Ergebnis gekommen: Option \"{winner}\" hat gewonnen!",
+        "strong_opinion_1": "Die stärkste Meinung hatte {name}.",
+        "strong_opinion_2": "Die stärkste Meinung hatten {name1} und {name2}.",
+        "strong_opinion_more": "Die stärksten Meinungen hatten {names}.",
+        "weak_opinion_1": "Die schwächste Meinung hatte {name}.",
+        "weak_opinion_2": "Die schwächste Meinung hatten {name1} und {name2}.",
+        "weak_opinion_more": "Die schwächsten Meinungen hatten {names}.",
+        "and": "und",
         "draw": "Unentschieden!",
+        "draw_2": "Es gibt ein Unentschieden zwischen {winner1} und {winner2}!",
+        "draw_more": "Es gibt ein Unentschieden zwischen {winners}!",
         "repeat_vote": "Wollt ihr die Abstimmung nocheinmal wiederholen?",
         "yes_with_same": "Ja, mit denselben Antwortmöglichkeiten",
         "yes_with_new": "Ja, mit neuen Antwortmöglichkeiten",
         "no": "Nö passt",
-        "vote_finished": "Die Abstimmung ist beendet!"
+        "vote_finished": "Die Abstimmung ist beendet!",
+        "back_to_start": "Eine neue Abstimmung starten?"
     },
     "en": {
         "title": "Preference Democratic Voting Tool",
@@ -67,8 +78,7 @@ translations = {
         "min_value_error": "Minimal Value must be less than Maximal Value. Please enter again.",
         "enter_name": "Enter your name:",
         "enter_preference": "Enter your preference for the answer options",
-        "enter_preference_many": "Enter your preference for the answer option ",
-        "enter_preference_many_2": ":",
+        "enter_preference_many": "Enter your preference for the answer option {answer}:",
         "confirm_input": "Confirm Input",
         "end_vote": "Finish voting",
         "already_voted": "##### Voted by:",
@@ -78,21 +88,37 @@ translations = {
         "multiple_bar_plots": "Horizontal Bar Charts",
         "text_answer": "Text Answer",
         "show_result": "Show results",
+        "show_guide_lines": "Show guide lines",
+        "show_guide_lines_average_point": "Show guide lines for average point",
         "public_opinion": "Public vote",
         "participants": "Participants",
-        "winner_option": " won!",
+        "winner_option": "Congratulations! You have reached a result: Option \"{winner}\" won!",
+        "strong_opinion_1": "{name} had the strongest opinion.",
+        "strong_opinion_2": "{name1} and {name2} had the strongest opinions.",
+        "strong_opinion_more": "{names} had the strongest opinions.",
+        "weak_opinion_1": "{name} had the weakest opinion.",
+        "weak_opinion_2": "{name1} and {name2} had the weakest opinions.",
+        "weak_opinion_more": "{names} had the weakest opinions.",
+        "and": "and",
         "draw": "It's a tie!",
+        "draw_2": "There is a tie between {winner1} and {winner2}!",
+        "draw_more": "There is a tie between {winners}!",
         "repeat_vote": "Do you want to repeat the vote?",
         "yes_with_same": "Yes, with the same options",
         "yes_with_new": "Yes, with new options",
         "no": "No, it's fine",
-        "vote_finished": "The vote is finished!"
+        "vote_finished": "The vote is finished!",
+        "back_to_start": "Start a new vote?"
     }
 }
 
 def t(key, **kwargs):
     text = translations[st.session_state.lang][key]
     return text.format(**kwargs)
+
+if "app_state" not in st.session_state:
+    st.session_state.app_state = "voting"   # voting, finished
+
 
 # st.title("Praeferenzdemokratisches Abstimmungswerkzeug")
 st.title(t("title"))
@@ -206,12 +232,11 @@ def input_vote_2(answers, question, mini, maxi):
                 st.session_state.name_input = ""
                 st.session_state.answer_input = 0
         with col1:
-            st.button(t("confirm_input"), on_click=submit_vote)
+            st.button(t("confirm_input"), on_click=submit_vote, disabled=st.session_state.name_input.strip() == "" )
 
         with col2:
-            if st.button(t("end_vote")):
-                st.session_state.finished = True
-                st.rerun()
+            st.button(t("end_vote"), on_click=lambda: st.session_state.update({"finished": True}), disabled=len(st.session_state.votes) < 2)
+            # st.rerun()
     # show confirmed voters
     if len(st.session_state.votes) > 0:
         st.write(t("already_voted"))
@@ -266,7 +291,7 @@ def input_vote_many(answers, question, mini, maxi):
         st.text_input(t("enter_name"), key="name_input")
         for i in range(len(answers)):
             st.slider(
-                t("enter_preference_many") + f" ({answers[i]})" + t("enter_preference_many_2"),
+                t("enter_preference_many", answer=answers[i]),
                 mini, maxi, value = 0, key=f"answer_input_{i}"
             )
             # st.session_state.answers[i] = answer
@@ -274,12 +299,11 @@ def input_vote_many(answers, question, mini, maxi):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.button(t("confirm_input"), on_click=submit_vote)
+            st.button(t("confirm_input"), on_click=submit_vote, disabled=st.session_state.name_input.strip() == "" )
 
         with col2:
-            if st.button(t("end_vote")):
-                st.session_state.finished = True
-                st.rerun()
+            st.button(t("end_vote"), on_click=lambda: st.session_state.update({"finished": True}), disabled=len(st.session_state.votes) < 2)
+            # st.rerun()
     # show confirmed voters
     if len(st.session_state.votes) > 0:
         st.write(t("already_voted"))
@@ -302,28 +326,32 @@ def input_visualisation(n_answers):
             chosen_options.append("Waage")
         if st.checkbox("Multiple Bar Plots"):
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer")):
+        if st.checkbox(t("text_answer"), value=True):
             chosen_options.append("Text Antwort")
     if n_answers == 3:
         if st.checkbox("3D Plot"):
             chosen_options.append("3D Plot")
         if st.checkbox(t("multiple_bar_plots")):
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer")):
+        if st.checkbox(t("text_answer"), value=True):
             chosen_options.append("Text Antwort")
     if n_answers > 3:
         if st.checkbox(t("multiple_bar_plots")):
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer")):
+        if st.checkbox(t("text_answer"), value=True):
             chosen_options.append("Text Antwort")
+    if "selected_figs" not in st.session_state:
+        st.session_state.selected_figs = None
+
     if st.button(t("show_result")):
-        return chosen_options
+        st.session_state.selected_figs = chosen_options
+
+    return st.session_state.selected_figs
         # Collect chosen options
 
 # input_visualisation()
 
 def input_part():
-
     question = st.text_input(t("enter_question"))
     if question == "":
         return None
@@ -458,31 +486,39 @@ def plot_coord(df, question, answers, maxi):
     # Place legend outside the axes
     ax.legend(handles, unique_names, title=t("participants"), loc='center left',
             bbox_to_anchor=(1.05, 0.8), fontsize=10)
-
-    # Projection lines for all points except the average
-    for i in range(len(xs)-1):  # exclude the last point (average)
-        ax.plot([xs[i], xs[i]], [ys[i], 0], [zs[i], 0], color='lightgray', linestyle='-.', alpha=0.4)
-        ax.plot([xs[i], 5], [ys[i], ys[i]], [zs[i], 0], color='lightgray', linestyle='-.', alpha=0.4)
-        ax.plot([xs[i], 5], [ys[i], 5], [zs[i], zs[i]], color='lightgray', linestyle='-.', alpha=0.4)
+    
+    if "guide_lines" not in st.session_state:
+        st.session_state.guide_lines = False
+    
+    st.checkbox(t("show_guide_lines"), key="guide_lines")
+    
+    if st.session_state.guide_lines:
+        
+        # Projection lines for all points except the average
+        for i in range(len(xs)-1):  # exclude the last point (average)
+            ax.plot([xs[i], xs[i]], [ys[i], 0], [zs[i], 0], color="#767676", linestyle='-.', alpha=0.4)
+            ax.plot([xs[i], 5], [ys[i], ys[i]], [zs[i], 0], color='#767676', linestyle='-.', alpha=0.4)
+            ax.plot([xs[i], 5], [ys[i], 5], [zs[i], zs[i]], color='#767676', linestyle='-.', alpha=0.4)
 
     # Average point coordinates
     avg_x, avg_y, avg_z = xs[-1], ys[-1], zs[-1]
 
-    # Projection lines for average point
-    ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
-    ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
-    ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='gray', linestyle='--', alpha=0.7)
+    if st.checkbox(t("show_guide_lines_average_point"), value=True):
+        # Projection lines for average point
+        ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
+        ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
+        ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='gray', linestyle='--', alpha=0.7)
 
-    # Highlight the max axis with red line
-    if avg_x >= avg_y and avg_x >= avg_z:
-        ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
-    if avg_y >= avg_x and avg_y >= avg_z:
-        ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
-    if avg_z >= avg_x and avg_z >= avg_y:
-        ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='red', linestyle='--', alpha=0.7)
+        # Highlight the max axis with red line
+        if avg_x >= avg_y and avg_x >= avg_z:
+            ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
+        if avg_y >= avg_x and avg_y >= avg_z:
+            ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
+        if avg_z >= avg_x and avg_z >= avg_y:
+            ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='red', linestyle='--', alpha=0.7)
 
     # Highlight average point
-    ax.scatter(avg_x, avg_y, avg_z, color='black', s=100)
+    ax.scatter(avg_x, avg_y, avg_z, color='red', s=110)
 
     # Axis ticks
     ax.set_xticks(range(min_val, max_val + 1))
@@ -638,59 +674,129 @@ def plot_many_bars(df, question, answers):
     # winner = totals.idxmax()
     # winner_idx_num = df.columns.get_loc(winner) - 1  # adjust for Name column
 
-    # ax.text(totals[winner]/2, winner_idx_num-0.4, "Option " + winner + 'winner_option', va='center', ha='left', fontsize=12, color='Red')
+    # ax.text(totals[winner]/2, winner_idx_num-0.4, "Option " + winner + 'winner_option_2', va='center', ha='left', fontsize=12, color='Red')
     # # Draw a red box around the winner
     # ax.add_patch(patches.Rectangle((0, winner_idx_num-0.3), totals[winner], 0.6, fill=False, edgecolor='red', linewidth=2))
     st.pyplot(fig)
     # plt.show()
 
+def opinion_text_n2(df):
+    strongest_answer = max(df['Answer'])
+    weakest_answer = min(df['Answer'])
+    strongest_opinion = df[df['Answer'] == strongest_answer]['Name'].tolist()
+    weakest_opinion = df[df['Answer'] == weakest_answer]['Name'].tolist()
 
-def text_answer(df, n_answers, answers):
+    if len(strongest_opinion) == 1:
+        st.write(t("strong_opinion_1", name=strongest_opinion[0]))
+    elif len(strongest_opinion) == 2:
+        st.write(t("strong_opinion_2", name1=strongest_opinion[0], name2=strongest_opinion[1]))
+    else:
+        st.write(t("strong_opinion_more", names=", ".join(strongest_opinion[:-1]) + " " + t("and") + " " + strongest_opinion[-1]))
+    
+    if len(weakest_opinion) == 1:
+        st.write(t("weak_opinion_1", name=weakest_opinion[0]))
+    elif len(weakest_opinion) == 2:
+        st.write(t("weak_opinion_2", name1=weakest_opinion[0], name2=weakest_opinion[1]))
+    else:
+        st.write(t("weak_opinion_more", names=", ".join(weakest_opinion[:-1]) + " " + t("and") + " " + weakest_opinion[-1]))
+
+def opinion_text_more(df, mini, maxi):
+    meani =(maxi - mini)/2 + mini
+    values = df.iloc[:, 1:].astype(float)
+
+    df["magnitude"] = (values - meani).abs().sum(axis=1)
+    strongest_answer = max(df['magnitude'])
+    weakest_answer = min(df['magnitude'])
+    strongest_opinion = df[df['magnitude'] == strongest_answer]['Name'].tolist()
+    weakest_opinion = df[df['magnitude'] == weakest_answer]['Name'].tolist()
+
+    if len(strongest_opinion) == 1:
+        st.write(t("strong_opinion_1", name=strongest_opinion[0]))
+    elif len(strongest_opinion) == 2:
+        st.write(t("strong_opinion_2", name1=strongest_opinion[0], name2=strongest_opinion[1]))
+    else:
+        st.write(t("strong_opinion_more", names=", ".join(strongest_opinion[:-1]) + " " + t("and") + " " + strongest_opinion[-1]))
+    
+    if len(weakest_opinion) == 1:
+        st.write(t("weak_opinion_1", name=weakest_opinion[0]))
+    elif len(weakest_opinion) == 2:
+        st.write(t("weak_opinion_2", name1=weakest_opinion[0], name2=weakest_opinion[1]))
+    else:
+        st.write(t("weak_opinion_more", names=", ".join(weakest_opinion[:-1]) + " " + t("and") + " " + weakest_opinion[-1]))
+
+def repeat_vote():
+    st.write(t("repeat_vote"))
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.button(t("yes_with_same"), on_click=lambda: st.session_state.update(finished=False, votes=[]))
+
+    with col2:
+        st.button(t("yes_with_new"), on_click=lambda: st.session_state.update(finished=False, votes=[], confirmed=False, confirmed_min_max=False, answers=["", ""]))
+    with col3:
+        st.button(
+            t("no"),
+            on_click=lambda: st.session_state.update(app_state="finished")
+        )
+
+def text_answer(df, n_answers, answers, mini, maxi):
     if n_answers == 2:
         result = df.iloc[:,1:].sum(axis=0).values[0]
+        
         if result < 0:
-            st.write("Option " + answers[0] + t('winner_option'))
+            st.write(t('winner_option', winner=answers[0]))
+            opinion_text_n2(df)
+            
         elif result == 0:
             st.write(t('draw'))
-            st.write(t('repeat_vote'))
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.button(t('yes_with_same'), on_click=lambda: st.session_state.update(finished=False, votes=[]))
-
-            with col2:
-                st.button(t('yes_with_new'), on_click=lambda: st.session_state.update(finished=False, votes=[], confirmed=False, confirmed_min_max=False, answers=["", ""]))
-            with col3:
-                st.button(t('no'), on_click=lambda: st.write(t('vote_finished')) and st.session_state.update(finished=True))
-                # st.write(t('vote_finished'))
-                    
+            repeat_vote()
 
         else:
-            st.write("Option " + answers[1] + t('winner_option'))
+            st.write(t('winner_option', winner=answers[1]))
+            opinion_text_n2(df)
     else:
         totals = df.iloc[:, 1:df.shape[1]].sum(axis=0)
-        winner = totals.idxmax()
-        st.write("Option " + winner + t('winner_option'))
+        winners = totals[totals == totals.max()].index.tolist()
+        if len(winners) == 1:
+            st.write(t('winner_option', winner=winners[0]))
+            opinion_text_more(df, mini, maxi)
+        elif len(winners) == 2:
+            st.write(t('draw_2', winner1=winners[0], winner2=winners[1]))
+            repeat_vote()
+        else:
+            st.write(t('draw_more', winners=", ".join(winners[:-1]) + " " + t("and") + " " + winners[-1]))
+            repeat_vote()
+
 
 def praeferenz():
+    if st.session_state.app_state == "finished":
+        st.write(t("vote_finished"))
 
-    result = input_part()
-    if result is None:
+        if st.button(t("back_to_start")):
+            st.session_state.clear()
+            st.rerun()
         return
+    if st.session_state.app_state == "voting":
+        result = input_part()
+        if result is None:
+            return
 
-    df, figs, n_answers, answers, question, mini, maxi = result
-    if figs is None:
-        return
+        df, figs, n_answers, answers, question, mini, maxi = result
+        if figs is None:
+            return
 
-    if "Bar Plot" in figs:
-        plot_bar(df, question, answers)
-    if "Waage" in figs:
-        plot_waage(df, question, answers)
-    if "3D Plot" in figs:
-        plot_coord(df, question, answers, maxi)
-    if "Multiple Bar Plots" in figs:
-        plot_many_bars(df, question, answers)
-    if "Text Antwort" in figs:
-        text_answer(df, n_answers, answers)
+        if "Bar Plot" in figs:
+            plot_bar(df, question, answers)
+        if "Waage" in figs:
+            plot_waage(df, question, answers)
+        if "3D Plot" in figs:
+            plot_coord(df, question, answers, maxi)
+        if "Multiple Bar Plots" in figs:
+            plot_many_bars(df, question, answers)
+        if "Text Antwort" in figs:
+            text_answer(df, n_answers, answers, mini, maxi)
+        
+        st.write(t("vote_finished"))
+        st.button(t("back_to_start"), on_click=lambda: st.session_state.update(app_state="finished"))
 
 praeferenz()
