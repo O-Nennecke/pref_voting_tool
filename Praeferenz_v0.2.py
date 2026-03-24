@@ -32,13 +32,13 @@ translations = {
         "minimal_value": "Minimaler Wert: ",
         "maximal_value": "Maximaler Wert: ",
         "min_value_error": "Minimaler Wert muss kleiner als maximaler Wert sein. Bitte erneut eingeben.",
+        "anonym": "Wollt ihr anonym abstimmen? (Es werden keine Namen der Teilnehmer*innen angezeigt, sondern nur die Anzahl der Stimmen)",
         "enter_name": "Gib deinen Namen ein:",
         "enter_preference": "Gib deine Zustimmung zu den Antwortmöglichkeiten ein",
         "enter_preference_many": "Gib deine Zustimmung zur Antwortmöglichkeit {answer} ein:",
         "confirm_input": "Eingabe bestätigen",
         "end_vote": "Abstimmung beenden",
         "already_voted": "##### Abgestimmt von:",
-        "show_result": "Zeig das Ergebnis",
         "select_visualization": "Welche Darstellungsoptionen der Ergebnisse sollen angezeigt werden?",
         "scale": "Waage",
         "multiple_bar_plots": "Horizontale Balkendiagramme",
@@ -61,8 +61,9 @@ translations = {
         "draw_more": "Es gibt ein Unentschieden zwischen {winners}!",
         "repeat_vote": "Wollt ihr die Abstimmung nocheinmal wiederholen?",
         "yes_with_same": "Ja, mit denselben Antwortmöglichkeiten",
-        "yes_with_new": "Ja, mit neuen Antwortmöglichkeiten",
-        "no": "Nö passt",
+        "yes_with_new": "Ja, aber mit neuen Antwortmöglichkeiten",
+        # "no": "Nö passt",
+        "finish": "Abstimmung beenden",
         "vote_finished": "Die Abstimmung ist beendet!",
         "back_to_start": "Eine neue Abstimmung starten?"
     },
@@ -76,13 +77,13 @@ translations = {
         "minimal_value": "Minimal Value: ",
         "maximal_value": "Maximal Value: ",
         "min_value_error": "Minimal Value must be less than Maximal Value. Please enter again.",
+        "anonym": "Do you want to vote anonymously? (No names of participants will be displayed, only the number of votes)",
         "enter_name": "Enter your name:",
         "enter_preference": "Enter your preference for the answer options",
         "enter_preference_many": "Enter your preference for the answer option {answer}:",
         "confirm_input": "Confirm Input",
         "end_vote": "Finish voting",
         "already_voted": "##### Voted by:",
-        "show_result": "Show results",
         "select_visualization": "Which visualization options for the results should be displayed?",
         "scale": "Scale",
         "multiple_bar_plots": "Horizontal Bar Charts",
@@ -105,8 +106,9 @@ translations = {
         "draw_more": "There is a tie between {winners}!",
         "repeat_vote": "Do you want to repeat the vote?",
         "yes_with_same": "Yes, with the same options",
-        "yes_with_new": "Yes, with new options",
-        "no": "No, it's fine",
+        "yes_with_new": "Yes, but with new options",
+        # "no": "No, it's fine",
+        "finish": "Finish",
         "vote_finished": "The vote is finished!",
         "back_to_start": "Start a new vote?"
     }
@@ -119,6 +121,8 @@ def t(key, **kwargs):
 if "app_state" not in st.session_state:
     st.session_state.app_state = "voting"   # voting, finished
 
+if "confirmed" not in st.session_state:
+    st.session_state.confirmed = False
 
 # st.title("Praeferenzdemokratisches Abstimmungswerkzeug")
 st.title(t("title"))
@@ -128,9 +132,6 @@ def input_answers():
     # Initialize session state
     if "answers" not in st.session_state:
         st.session_state.answers = ["", ""]
-
-    if "confirmed" not in st.session_state:
-        st.session_state.confirmed = False
 
     st.write(t("enter_answers"))
 
@@ -188,11 +189,12 @@ def input_min_max(n_answers):
     if mini >= maxi:
         st.write(t("min_value_error"))
         st.rerun()
-    if st.button(t("confirm_answers")):
-        st.session_state.confirmed_min_max = True
-        st.session_state.min = mini
-        st.session_state.max = maxi
-        st.rerun()
+    if not st.session_state.confirmed_min_max:
+        if st.button(t("confirm_answers")):
+            st.session_state.confirmed_min_max = True
+            st.session_state.min = mini
+            st.session_state.max = maxi
+            st.rerun()
     # Return confirmed answers
     if st.session_state.confirmed_min_max:
         return st.session_state.min, st.session_state.max
@@ -320,30 +322,39 @@ def input_visualisation(n_answers):
     st.write(t("select_visualization"))
     chosen_options = []
     if n_answers == 2:
-        if st.checkbox("Bar Plot"):
+        st.checkbox("Bar Plot", value=True, key="bar_plot")
+        if st.session_state.bar_plot:
             chosen_options.append("Bar Plot")
-        if st.checkbox(t("scale")):
+        st.checkbox(t("scale"), value=True, key="scale")
+        if st.session_state.scale:
             chosen_options.append("Waage")
-        if st.checkbox("Multiple Bar Plots"):
+        st.checkbox('Multiple Bar Plots', value=True, key="multiple_bar_plots")
+        if st.session_state.multiple_bar_plots:
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer"), value=True):
+        st.checkbox(t("text_answer"), value=True, key="text_answer")
+        if st.session_state.text_answer:
             chosen_options.append("Text Antwort")
     if n_answers == 3:
-        if st.checkbox("3D Plot"):
+        st.checkbox("3D Plot", value=True, key="3d_plot")
+        if st.session_state["3d_plot"]:
             chosen_options.append("3D Plot")
-        if st.checkbox(t("multiple_bar_plots")):
+        st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
+        if st.session_state.multiple_bar_plots:
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer"), value=True):
+        st.checkbox(t("text_answer"), value=True, key="text_answer")
+        if st.session_state.text_answer:
             chosen_options.append("Text Antwort")
     if n_answers > 3:
-        if st.checkbox(t("multiple_bar_plots")):
+        st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
+        if st.session_state.multiple_bar_plots:
             chosen_options.append("Multiple Bar Plots")
-        if st.checkbox(t("text_answer"), value=True):
+        st.checkbox(t("text_answer"), value=True, key="text_answer")
+        if st.session_state.text_answer:
             chosen_options.append("Text Antwort")
     if "selected_figs" not in st.session_state:
         st.session_state.selected_figs = None
 
-    if st.button(t("show_result")):
+    if st.button(t("show_result"), key="show_result_button"):
         st.session_state.selected_figs = chosen_options
 
     return st.session_state.selected_figs
@@ -352,9 +363,11 @@ def input_visualisation(n_answers):
 # input_visualisation()
 
 def input_part():
-    question = st.text_input(t("enter_question"))
-    if question == "":
-        return None
+
+    st.text_input(t("enter_question"), key="question", #value = "",
+            disabled=st.session_state.confirmed)
+
+    question = st.session_state.question
 
     answers = input_answers()
     if answers is None:
@@ -367,6 +380,8 @@ def input_part():
         return None
 
     mini, maxi = min_max
+
+    st.checkbox(t("anonym"), key="anonym", value=False)
 
     if n_answers == 2:
         df = input_vote_2(answers, question, mini, maxi)
@@ -427,8 +442,9 @@ def plot_bar(df, question, answers):
         r, g, b, _ = color
         text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
 
-        ax.bar_label(rects, labels=[name], label_type='center', color=text_color)
-
+        if not st.session_state.anonym:
+            ax.bar_label(rects, labels=[name], label_type='center', color=text_color)
+    # ax.bar_label(rects, labels=[name], label_type='center', color=text_color)
     ax.vlines(0, -0.5, 0.5, color='black', linewidth=0.8)
     ax.vlines(total, -0.5, 0.5, color='Red', linewidth=2)
     ax.text(total, -0.8, t("public_opinion"), transform=ax.transData, ha='center', va='top', fontsize=10, color='Red')
@@ -443,10 +459,14 @@ def plot_coord(df, question, answers, maxi):
                             for i in range(len(df.columns[1:]))}}, index=[0])
     df_fin = pd.concat([df, df_avg], ignore_index=True)
 
-    # Format the names with rounded values
-    for i in range(len(df_fin['Name'])):
-        df_fin.loc[i, 'Name'] = f"{df_fin.loc[i, 'Name']} ({round(df_fin.iloc[i,1],2)}|{round(df_fin.iloc[i,2],2)}|{round(df_fin.iloc[i,3],2)})"
-
+    if not st.session_state.anonym:
+        # Format the names with rounded values
+        for i in range(len(df_fin['Name'])):
+            df_fin.loc[i, 'Name'] = f"{df_fin.loc[i, 'Name']} ({round(df_fin.iloc[i,1],2)}|{round(df_fin.iloc[i,2],2)}|{round(df_fin.iloc[i,3],2)})"
+    else:
+        # If anonym, replace names with "Participant 1", "Participant 2", etc.
+        for i in range(len(df_fin['Name'])-1):  # exclude the last row (average)
+            df_fin.loc[i, 'Name'] = f"{t('participants')} {i+1}"
     # Convert Names to categorical codes
     names = df_fin['Name'].astype('category')
     codes = names.cat.codes
@@ -487,10 +507,8 @@ def plot_coord(df, question, answers, maxi):
     ax.legend(handles, unique_names, title=t("participants"), loc='center left',
             bbox_to_anchor=(1.05, 0.8), fontsize=10)
     
-    if "guide_lines" not in st.session_state:
-        st.session_state.guide_lines = False
     
-    st.checkbox(t("show_guide_lines"), key="guide_lines")
+    st.checkbox(t("show_guide_lines"), value=False, key="guide_lines")
     
     if st.session_state.guide_lines:
         
@@ -503,7 +521,9 @@ def plot_coord(df, question, answers, maxi):
     # Average point coordinates
     avg_x, avg_y, avg_z = xs[-1], ys[-1], zs[-1]
 
-    if st.checkbox(t("show_guide_lines_average_point"), value=True):
+    st.checkbox(t("show_guide_lines_average_point"), value=True, key="guide_lines_avg")
+    
+    if st.session_state.guide_lines_avg:
         # Projection lines for average point
         ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
         ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
@@ -602,7 +622,8 @@ def plot_waage(df, question, answers):
         x0s = x_beam
         size = 1000 * abs(value) / max_abs
         ax.scatter(x0s, y0s, s=size, color=colors[name], marker='s', zorder=3)
-        ax.text(x0s, y0s, name, ha='center', va='bottom', fontsize=10, rotation=0, zorder=4)
+        if not st.session_state.anonym:
+            ax.text(x0s, y0s, name, ha='center', va='bottom', fontsize=10, rotation=0, zorder=4)
     # Plot negative squares on left
     for i, row in enumerate(df_neg.itertuples()):
         plot_square(x0, y0, row.Answer, row.Name, i)
@@ -666,7 +687,8 @@ def plot_many_bars(df, question, answers):
             partic if w != 0 else ""
             for w in widths
         ]
-        ax.bar_label(rects, labels=labels_for_rects, label_type='center', color=text_color)
+        if not st.session_state.anonym:
+            ax.bar_label(rects, labels=labels_for_rects, label_type='center', color=text_color)
 
     # # Calculate total for each category
     # totals = df.iloc[:, 1:df.shape[1]].sum(axis=0)
@@ -726,16 +748,27 @@ def opinion_text_more(df, mini, maxi):
 
 def repeat_vote():
     st.write(t("repeat_vote"))
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.button(t("yes_with_same"), key="repeat_same_settings", on_click=lambda: st.session_state.update(finished=False, votes=[], selected_figs=[]))
+
+    with col2:
+        st.button(t("yes_with_new"), key="repeat_new_settings", on_click=lambda: st.session_state.update(finished=False, votes=[], confirmed=False, confirmed_min_max=False, answers=["", ""], selected_figs=[]))
+        
+def repeat_vote_fin():
+    st.write(t("repeat_vote"))
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.button(t("yes_with_same"), on_click=lambda: st.session_state.update(finished=False, votes=[]))
+        st.button(t("yes_with_same"), key="repeat_same_settings_fin", on_click=lambda: st.session_state.update(finished=False, votes=[], selected_figs=None))
 
     with col2:
-        st.button(t("yes_with_new"), on_click=lambda: st.session_state.update(finished=False, votes=[], confirmed=False, confirmed_min_max=False, answers=["", ""]))
+        st.button(t("yes_with_new"), key="repeat_new_settings_fin", on_click=lambda: st.session_state.update(finished=False, votes=[], confirmed=False, confirmed_min_max=False, answers=["", ""], selected_figs=None))
     with col3:
         st.button(
             t("no"),
+            key="repeat_no_fin",
             on_click=lambda: st.session_state.update(app_state="finished")
         )
 
@@ -745,7 +778,8 @@ def text_answer(df, n_answers, answers, mini, maxi):
         
         if result < 0:
             st.write(t('winner_option', winner=answers[0]))
-            opinion_text_n2(df)
+            if not st.session_state.anonym:
+                opinion_text_n2(df)
             
         elif result == 0:
             st.write(t('draw'))
@@ -753,13 +787,15 @@ def text_answer(df, n_answers, answers, mini, maxi):
 
         else:
             st.write(t('winner_option', winner=answers[1]))
-            opinion_text_n2(df)
+            if not st.session_state.anonym:
+                opinion_text_n2(df)
     else:
         totals = df.iloc[:, 1:df.shape[1]].sum(axis=0)
         winners = totals[totals == totals.max()].index.tolist()
         if len(winners) == 1:
             st.write(t('winner_option', winner=winners[0]))
-            opinion_text_more(df, mini, maxi)
+            if not st.session_state.anonym:
+                opinion_text_more(df, mini, maxi)
         elif len(winners) == 2:
             st.write(t('draw_2', winner1=winners[0], winner2=winners[1]))
             repeat_vote()
@@ -767,14 +803,23 @@ def text_answer(df, n_answers, answers, mini, maxi):
             st.write(t('draw_more', winners=", ".join(winners[:-1]) + " " + t("and") + " " + winners[-1]))
             repeat_vote()
 
+def reset_vote_state():
+    keys_to_keep = ["lang"]  # keep language
+    
+    for key in list(st.session_state.keys()):
+        if key not in keys_to_keep:
+            del st.session_state[key]
 
 def praeferenz():
     if st.session_state.app_state == "finished":
         st.write(t("vote_finished"))
-
-        if st.button(t("back_to_start")):
-            st.session_state.clear()
-            st.rerun()
+        st.button(
+            t("back_to_start"),
+            on_click=reset_vote_state
+        )
+        # if st.button(t("back_to_start")):
+        #     st.session_state.clear()
+        #     st.rerun()
         return
     if st.session_state.app_state == "voting":
         result = input_part()
@@ -795,8 +840,12 @@ def praeferenz():
             plot_many_bars(df, question, answers)
         if "Text Antwort" in figs:
             text_answer(df, n_answers, answers, mini, maxi)
-        
-        st.write(t("vote_finished"))
-        st.button(t("back_to_start"), on_click=lambda: st.session_state.update(app_state="finished"))
-
+        if st.session_state.selected_figs:
+            # st.write(t("vote_finished"))
+            # st.button(t("back_to_start"), on_click=lambda: st.session_state.update(answer="", confirmed=False, app_state="finished"))
+            st.button(
+                t("finish"),
+                on_click= lambda: st.session_state.update(app_state="finished"))#reset_vote_state
+            # )
+            # repeat_vote_fin()
 praeferenz()
