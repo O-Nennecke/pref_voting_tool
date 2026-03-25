@@ -41,7 +41,8 @@ translations = {
         "already_voted": "##### Abgestimmt von:",
         "select_visualization": "Welche Darstellungsoptionen der Ergebnisse sollen angezeigt werden?",
         "scale": "Waage",
-        "multiple_bar_plots": "Horizontale Balkendiagramme",
+        "multiple_bar_plots": "Horizontale Balkendiagramme (2)",
+        "multiple_bar_plots_neg": "Horizontale Balkendiagramme (1)",
         "text_answer": "Textantwort",
         "show_result": "Zeig das Ergebnis",
         "show_guide_lines": "Zeige Hilfslinien",
@@ -86,7 +87,8 @@ translations = {
         "already_voted": "##### Voted by:",
         "select_visualization": "Which visualization options for the results should be displayed?",
         "scale": "Scale",
-        "multiple_bar_plots": "Horizontal Bar Charts",
+        "multiple_bar_plots": "Horizontal Bar Charts (2)",
+        "multiple_bar_plots_neg": "Horizontal Bar Charts (1)",
         "text_answer": "Text Answer",
         "show_result": "Show results",
         "show_guide_lines": "Show guide lines",
@@ -318,7 +320,7 @@ def input_vote_many(answers, question, mini, maxi):
 # input_vote_many(["adf", "bcg", "def"], "Wie sehr bist du für bzw. gegen die Antwortmöglichkeiten?", 0, 5)
 
 
-def input_visualisation(n_answers):
+def input_visualisation(n_answers, mini):
     st.write(t("select_visualization"))
     chosen_options = []
     if n_answers == 2:
@@ -338,16 +340,24 @@ def input_visualisation(n_answers):
         st.checkbox("3D Plot", value=True, key="3d_plot")
         if st.session_state["3d_plot"]:
             chosen_options.append("3D Plot")
-        st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
-        if st.session_state.multiple_bar_plots:
-            chosen_options.append("Multiple Bar Plots")
+        st.checkbox(t("multiple_bar_plots_neg"), value=True, key="multiple_bar_plots_negative")
+        if st.session_state.multiple_bar_plots_negative:
+            chosen_options.append("Multiple Bar Plots Negative")
+        if mini >= 0:
+            st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
+            if st.session_state.multiple_bar_plots:
+                chosen_options.append("Multiple Bar Plots")
         st.checkbox(t("text_answer"), value=True, key="text_answer")
         if st.session_state.text_answer:
             chosen_options.append("Text Antwort")
     if n_answers > 3:
-        st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
-        if st.session_state.multiple_bar_plots:
-            chosen_options.append("Multiple Bar Plots")
+        st.checkbox(t("multiple_bar_plots_neg"), value=True, key="multiple_bar_plots_negative")
+        if st.session_state.multiple_bar_plots_negative:
+            chosen_options.append("Multiple Bar Plots Negative")
+        if mini >= 0:
+            st.checkbox(t("multiple_bar_plots"), value=True, key="multiple_bar_plots")
+            if st.session_state.multiple_bar_plots:
+                chosen_options.append("Multiple Bar Plots")
         st.checkbox(t("text_answer"), value=True, key="text_answer")
         if st.session_state.text_answer:
             chosen_options.append("Text Antwort")
@@ -390,7 +400,7 @@ def input_part():
 
     if not st.session_state.get("finished", False):
         return None
-    figs = input_visualisation(n_answers)
+    figs = input_visualisation(n_answers, mini)
 
     return df, figs, n_answers, answers, question, mini, maxi
 
@@ -398,9 +408,7 @@ def plot_bar(df, question, answers):
     names = df['Name'].tolist()
     values = df['Answer'].to_numpy()
 
-    colors = plt.colormaps['RdYlGn'](
-        np.linspace(0.15, 0.85, len(values))
-    )
+    colors = ["#e54e35", '#3faa59']
 
     fig, ax = plt.subplots(figsize=(9.2, 1))
     ax.invert_yaxis()
@@ -412,6 +420,7 @@ def plot_bar(df, question, answers):
 
     ax.set_xlim(-abs_max, abs_max)
     ax.set_xticks(range(-abs_max, abs_max + 1))
+    ax.set_xticklabels([str(abs(x)) if x < 0 else str(x) for x in range(-abs_max, abs_max + 1)])
     ax.set_yticks([])
     ax.set_title(question, fontsize=14, fontweight='bold', pad=15, loc='left')
     # Remove Box from plot
@@ -451,7 +460,7 @@ def plot_bar(df, question, answers):
     st.pyplot(fig)
     # plt.show()
     
-def plot_coord(df, question, answers, maxi):
+def plot_coord(df, question, answers, mini, maxi):
     # make a 3d coordinate system with points for the position of each person and a mean point
     # Add the Durchschnitt row
     df_avg = pd.DataFrame({'Name': t("public_opinion"), 
@@ -488,13 +497,11 @@ def plot_coord(df, question, answers, maxi):
     ax = fig.add_subplot(gs[0], projection='3d')
 
     # Scatter plot
-    scatter = ax.scatter(xs, ys, zs, c=colors, s=60, depthshade=False)
-    min_val = 0
-    max_val = maxi
+    ax.scatter(xs, ys, zs, c=colors, s=60, depthshade=False)
 
-    ax.set_xlim(min_val, max_val)
-    ax.set_ylim(min_val, max_val)
-    ax.set_zlim(min_val, max_val)
+    ax.set_xlim(mini, maxi)
+    ax.set_ylim(mini, maxi)
+    ax.set_zlim(mini, maxi)
     ax.set_box_aspect([1,1,1])  # maintain cube aspect ratio
 
     # Create legend handles
@@ -514,9 +521,9 @@ def plot_coord(df, question, answers, maxi):
         
         # Projection lines for all points except the average
         for i in range(len(xs)-1):  # exclude the last point (average)
-            ax.plot([xs[i], xs[i]], [ys[i], 0], [zs[i], 0], color="#767676", linestyle='-.', alpha=0.4)
-            ax.plot([xs[i], 5], [ys[i], ys[i]], [zs[i], 0], color='#767676', linestyle='-.', alpha=0.4)
-            ax.plot([xs[i], 5], [ys[i], 5], [zs[i], zs[i]], color='#767676', linestyle='-.', alpha=0.4)
+            ax.plot([xs[i], xs[i]], [ys[i], mini], [zs[i], mini], color="#767676", linestyle='-.', alpha=0.4)
+            ax.plot([xs[i], maxi], [ys[i], ys[i]], [zs[i], mini], color='#767676', linestyle='-.', alpha=0.4)
+            ax.plot([xs[i], maxi], [ys[i], maxi], [zs[i], zs[i]], color='#767676', linestyle='-.', alpha=0.4)
 
     # Average point coordinates
     avg_x, avg_y, avg_z = xs[-1], ys[-1], zs[-1]
@@ -525,25 +532,25 @@ def plot_coord(df, question, answers, maxi):
     
     if st.session_state.guide_lines_avg:
         # Projection lines for average point
-        ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
-        ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='gray', linestyle='--', alpha=0.7)
-        ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='gray', linestyle='--', alpha=0.7)
+        ax.plot([avg_x, avg_x], [avg_y, mini], [avg_z, mini], color='gray', linestyle='--', alpha=0.7)
+        ax.plot([avg_x, maxi], [avg_y, avg_y], [avg_z, mini], color='gray', linestyle='--', alpha=0.7)
+        ax.plot([avg_x, maxi], [avg_y, maxi], [avg_z, avg_z], color='gray', linestyle='--', alpha=0.7)
 
         # Highlight the max axis with red line
         if avg_x >= avg_y and avg_x >= avg_z:
-            ax.plot([avg_x, avg_x], [avg_y, 0], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
+            ax.plot([avg_x, avg_x], [avg_y, mini], [avg_z, mini], color='red', linestyle='--', alpha=0.7)
         if avg_y >= avg_x and avg_y >= avg_z:
-            ax.plot([avg_x, 5], [avg_y, avg_y], [avg_z, 0], color='red', linestyle='--', alpha=0.7)
+            ax.plot([avg_x, maxi], [avg_y, avg_y], [avg_z, mini], color='red', linestyle='--', alpha=0.7)
         if avg_z >= avg_x and avg_z >= avg_y:
-            ax.plot([avg_x, 5], [avg_y, 5], [avg_z, avg_z], color='red', linestyle='--', alpha=0.7)
+            ax.plot([avg_x, maxi], [avg_y, maxi], [avg_z, avg_z], color='red', linestyle='--', alpha=0.7)
 
     # Highlight average point
     ax.scatter(avg_x, avg_y, avg_z, color='red', s=110)
 
     # Axis ticks
-    ax.set_xticks(range(min_val, max_val + 1))
-    ax.set_yticks(range(min_val, max_val + 1))
-    ax.set_zticks(range(min_val, max_val + 1))
+    ax.set_xticks(range(mini, maxi + 1))
+    ax.set_yticks(range(mini, maxi + 1))
+    ax.set_zticks(range(mini, maxi + 1))
 
     # Labels
     ax.set_title(question, fontsize=14, fontweight='bold', pad=15, loc='left')
@@ -645,7 +652,7 @@ def plot_waage(df, question, answers):
     st.pyplot(fig)
     # plt.show()
 
-def plot_many_bars(df, question, answers):
+def plot_many_bars(df, question, answers, mini):
     participants = df.Name.tolist()
     if len(answers) == 2:
         df[answers[0]] = df['Answer'].where(df['Answer'] > 0, 0)
@@ -663,8 +670,11 @@ def plot_many_bars(df, question, answers):
     
     fig, ax = plt.subplots(figsize=(9.2, 5))
     ax.invert_yaxis()
-    ax.xaxis.set_visible(False)
-    ax.set_xlim(0, np.sum(data, axis=1).max())
+    # ax.xaxis.set_visible(False)
+    if len(answers) == 2:
+        ax.set_xlim(0, np.sum(data, axis=1).max())
+    else:
+        ax.set_xlim(mini, np.sum(data, axis=1).max())
 
     ax.set_title(question, fontsize=14, fontweight='bold', pad=15, loc='left')
     # Remove Box from plot
@@ -699,6 +709,45 @@ def plot_many_bars(df, question, answers):
     # ax.text(totals[winner]/2, winner_idx_num-0.4, "Option " + winner + 'winner_option_2', va='center', ha='left', fontsize=12, color='Red')
     # # Draw a red box around the winner
     # ax.add_patch(patches.Rectangle((0, winner_idx_num-0.3), totals[winner], 0.6, fill=False, edgecolor='red', linewidth=2))
+    st.pyplot(fig)
+    # plt.show()
+
+def plot_many_bars_neg(df, question):
+    participants = df.Name.tolist()
+    results = {}
+    for i in range(df.shape[1]-1):
+        results[df.columns[i+1]] = df.iloc[:, i+1].to_list()
+    
+    labels = list(results.keys())
+    data = np.array(list(results.values()))
+    data_sum = data.sum(axis=1)
+
+    category_colors = plt.colormaps['tab10'](np.linspace(0.15, 0.85, data.shape[1]))
+    
+    fig, ax = plt.subplots(figsize=(9.2, 5))
+    ax.invert_yaxis()
+    # ax.xaxis.set_visible(False)
+    ax.set_xlim(min(data_sum.min()-1, 0), data_sum.max()+1)
+
+    ax.set_title(question, fontsize=14, fontweight='bold', pad=15, loc='left')
+    # Remove Box from plot
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    
+    colors = ["#e54e35", '#3faa59']
+    colors_used = [colors[0] if x <= 0 else colors[1] for x in data_sum]
+    
+    ax.barh(labels, data_sum, height=0.5, color=colors_used)
+
+    for i, (partic, color) in enumerate(zip(participants, category_colors)):
+        widths = data[:, i]
+        ax.scatter(widths, range(len(labels)), s=50, label=partic, color=color)
+
+    if not st.session_state.anonym:
+        ax.legend()
+    
     st.pyplot(fig)
     # plt.show()
 
@@ -835,9 +884,12 @@ def praeferenz():
         if "Waage" in figs:
             plot_waage(df, question, answers)
         if "3D Plot" in figs:
-            plot_coord(df, question, answers, maxi)
+            plot_coord(df, question, answers, mini, maxi)
         if "Multiple Bar Plots" in figs:
-            plot_many_bars(df, question, answers)
+            plot_many_bars(df, question, answers, mini)
+        if "Multiple Bar Plots Negative" in figs:
+            plot_many_bars_neg(df, question)
+        # st.write(df)
         if "Text Antwort" in figs:
             text_answer(df, n_answers, answers, mini, maxi)
         if st.session_state.selected_figs:
