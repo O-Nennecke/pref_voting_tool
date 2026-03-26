@@ -450,8 +450,8 @@ def plot_bar(df, question, answers):
 
         rects = ax.barh(" ", value, left=start, height=0.5, color=color)
 
-        r, g, b, _ = color
-        text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
+        # r, g, b, _ = color
+        text_color = 'black' # 'white' if r * g * b < 0.5 else 'darkgrey'
 
         if not st.session_state.anonym:
             ax.bar_label(rects, labels=[name], label_type='center', color=text_color)
