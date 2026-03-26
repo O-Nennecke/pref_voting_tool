@@ -408,7 +408,9 @@ def plot_bar(df, question, answers):
     names = df['Name'].tolist()
     values = df['Answer'].to_numpy()
 
-    colors = ["#e54e35", '#3faa59']
+    colors = plt.colormaps['RdYlGn'](
+        np.linspace(0.15, 0.85, len(values))
+    )
 
     fig, ax = plt.subplots(figsize=(9.2, 1))
     ax.invert_yaxis()
@@ -448,8 +450,8 @@ def plot_bar(df, question, answers):
 
         rects = ax.barh(" ", value, left=start, height=0.5, color=color)
 
-        # r, g, b, _ = color
-        text_color = 'black' #'white' if r * g * b < 0.5 else 'darkgrey'
+        r, g, b, _ = color
+        text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
 
         if not st.session_state.anonym:
             ax.bar_label(rects, labels=[name], label_type='center', color=text_color)
