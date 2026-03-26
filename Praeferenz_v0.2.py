@@ -218,7 +218,7 @@ def input_vote_2(answers, question, mini, maxi):
         st.text_input(t("enter_name"), key="name_input")
         st.slider(
             t("enter_preference") + f" ({answers[0]} ↔ {answers[1]}):",
-            mini, maxi, key="answer_input"
+            mini, maxi, 0, key="answer_input"
         )
         
         col1, col2 = st.columns(2)
