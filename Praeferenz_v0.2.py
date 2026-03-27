@@ -408,7 +408,7 @@ def plot_bar(df, question, answers):
     names = df['Name'].tolist()
     values = df['Answer'].to_numpy()
 
-    colors = plt.colormaps['RdYlGn'](
+    colors = plt.colormaps['tab10'](
         np.linspace(0.15, 0.85, len(values))
     )
 
@@ -469,7 +469,7 @@ def plot_coord(df, question, answers, mini, maxi):
                         **{df.columns[1:][i]: df[df.columns[1:][i]].mean() 
                             for i in range(len(df.columns[1:]))}}, index=[0])
     df_fin = pd.concat([df, df_avg], ignore_index=True)
-
+    # st.write(df_fin)
     if not st.session_state.anonym:
         # Format the names with rounded values
         for i in range(len(df_fin['Name'])):
@@ -480,14 +480,21 @@ def plot_coord(df, question, answers, mini, maxi):
             df_fin.loc[i, 'Name'] = f"{t('participants')} {i+1}"
     # Convert Names to categorical codes
     names = df_fin['Name'].astype('category')
-    codes = names.cat.codes
+    # st.write(names)
+    # codes = names.cat.codes
+    # st.write(codes)
     unique_names = names.cat.categories
+    # st.write(unique_names)
+    # Reorder unique_names to be in the original order of the dataframe (except the average point which should be last)
+    unique_names = [name for name in df_fin['Name'] if name in unique_names and t("public_opinion") not in name] + [name for name in df_fin['Name'] if name in unique_names and t("public_opinion") in name]
 
     # Create color map
-    cmap = plt.get_cmap('tab10')  # use tab10 or tab20 for more participants
-    n_colors = len(unique_names)
-    colors = cmap(codes / (n_colors - 1 if n_colors > 1 else 1))  # normalize to [0,1]
-
+    n_colors = len(unique_names) -1
+    colors = plt.colormaps['tab10'](np.linspace(0.15, 0.85, n_colors))
+    # st.write(colors)
+    # Insert color for average point (last row)
+    colors = np.append(colors, [[0.5, 0.5, 0.5, 1]], axis=0)  # gray color for average point
+    
     # Data
     xs = pd.to_numeric(df_fin[answers[0]], errors='coerce').to_numpy()
     ys = pd.to_numeric(df_fin[answers[1]], errors='coerce').to_numpy()
@@ -508,9 +515,9 @@ def plot_coord(df, question, answers, mini, maxi):
 
     # Create legend handles
     handles = [mlines.Line2D([0], [0], marker='o', color='w',
-                            markerfacecolor=cmap(i / (n_colors - 1 if n_colors > 1 else 1)),
+                            markerfacecolor=colors[i],
                             markersize=8)
-            for i in range(n_colors)]
+            for i in range(n_colors+1)]
 
     # Place legend outside the axes
     ax.legend(handles, unique_names, title=t("participants"), loc='center left',
@@ -618,8 +625,11 @@ def plot_waage(df, question, answers):
     ax.text(x1r, 0.1, answers[1], ha='center', va='top', fontsize=16)
     # Colors for each participant
     names = df['Name'].tolist()
-    cmap = plt.get_cmap('tab10')
-    colors = {name:cmap(i/len(names)) for i,name in enumerate(names)}
+    # cmap = plt.get_cmap('tab10')
+    # colors = {name:cmap(i/len(names)) for i,name in enumerate(names)}
+    cmap = plt.colormaps['tab10'](np.linspace(0.15, 0.85, len(names)))# plt.get_cmap('tab10')
+    colors = {name:cmap[i,:] for i,name in enumerate(names)}
+    # st.write(colors)
     
     max_abs = df['Answer'].abs().max()
     
@@ -692,8 +702,8 @@ def plot_many_bars(df, question, answers, mini):
         rects = ax.barh(labels, widths, left=starts, height=0.5,
                         label=partic, color=color)
 
-        r, g, b, _ = color
-        text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
+        # r, g, b, _ = color
+        text_color = 'black' #'white' if r * g * b < 0.5 else 'darkgrey'
         # print(partic, len(rects))
         labels_for_rects = [
             partic if w != 0 else ""
